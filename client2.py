@@ -5,7 +5,7 @@ from time import sleep
 from multiprocessing.connection import Listener
 from multiprocessing import Process
 
-local_listener = (('127.0.0.1', 5002),'secret client password')
+local_listener = (('127.0.0.1', 5004),'secret client 2 password')
 
 def client_listener():
     cl = Listener(address=local_listener[0], authkey=local_listener[1])
@@ -22,26 +22,25 @@ if __name__ == '__main__':
 
     print 'trying to connect'
     conn = Client(address=('127.0.0.1', 6000), authkey='secret password server')
-    conn.send(local_listener)
-    user = raw_input('Name')
-    password = raw_input('Password')
-    conn.send([(user,password),"new_user",[]])
+    
     cl = Process(target=client_listener, args=())
     cl.start()
-
+    
+    id = raw_input("user")
+    password = raw_input("pass")
+    conn.send([(id,password), "go_online", local_listener])
     connected = True
     while connected:
-        #modifico el protocolo, quit es para salir
-        message = raw_input("Message here, 'Q' to quit connection")
-        sendto = raw_input('send to?')
-        conn.send([(user,password),"chat",(sendto,message)])
-        if message == 'Q':
+        sendto = raw_input("sendto?")
+        message = raw_input("Message here")
+        if message == 'quit':
             connected = False
+            conn.send(([(id,password), "quit", []]))
         else:
             print "continue connected"
+            conn.send(([(id,password), "chat", (sendto,message)]))
         
     print "last message"
-    conn.send([(user,password),"quit"])
     conn.close()
     cl.terminate()
     print "end client"
