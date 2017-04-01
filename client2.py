@@ -9,14 +9,24 @@ local_listener = (('127.0.0.1', 5004),'secret client 2 password')
 
 def client_listener():
     cl = Listener(address=local_listener[0], authkey=local_listener[1])
-    print '.............client listener starting' 
-    print '.............accepting conexions'
+    print '...client listener starting' 
+    print '...accepting conexions'
     while True:
-        conn = cl.accept()
-        print '.............connection accepted from', cl.last_accepted        
+        conn = cl.accept()    
         m = conn.recv()
-        print '.............message received from server', m 
+        if m[0]=="server_notify_go_online_user":
+        	message = "Se ha conectado el usuario", m[1]
+        	print message
+        elif m[0]=="server_notify_quit_user":
+		message = "Se ha desconectado el usuario", m[1]
+		print message
+	elif m[0]=="server_notify_chat":
+		message = "[",m[1][0],"] dice:",m[1][1]
+		print message
+	elif m[0]=="server_notify_inbox":
+		message = "Mensajes recibidos mientras estabas desconectado",m[1]
 
+		print message
 
 if __name__ == '__main__':
 
@@ -43,4 +53,4 @@ if __name__ == '__main__':
     print "last message"
     conn.close()
     cl.terminate()
-    print "end client"
+print "end client"
