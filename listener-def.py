@@ -1,3 +1,4 @@
+
 #hay que seguir cambiando cosas desde listener-t
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
@@ -22,15 +23,15 @@ def notify_quit_client(id,clients):
             conn = Client(address=client_info[0], authkey=client_info[1])
             conn.send(("server_notify_quit_user", id))
             conn.close()
-def check_inbox(usuario,inbox):
+def check_inbox(usuario,clients,inbox):
     print "checking inbox", usuario
     for registro, registro_info in inbox.items():#comprobar esto
 	print registro
 	if registro==usuario:
-		return ("server_notify_inbox",registro_info)
-		#conn = Client(address=registro[0], authkey=registro_info[1])
-		#conn.send(("server_notify_inbox",registro_info))
-		#conn.close()
+		#return ("server_notify_inbox",registro_info)
+		conn = Client(address=clients[usuario][0], authkey=clients[usuario][1])
+		conn.send(("server_notify_inbox",registro_info))
+		conn.close()
 def send_message(destino,mensaje,clients):
     print "hola", destino,mensaje
     if destino in clients:
@@ -39,7 +40,8 @@ def send_message(destino,mensaje,clients):
     else:
            inbox[destino]=mensaje
 	   print "inbox", inbox
-def serve_client(conn, clients,users,inbox):
+    
+def serve_client(conn, clients,users,inbox,addressbook):
     connected = True
     while connected:
         try:
@@ -56,7 +58,7 @@ def serve_client(conn, clients,users,inbox):
                 if users[nick] == password:
                     client_info = m[2]
                     clients[nick] = client_info
-		    conn.send(["notify_go_online",True])
+		    conn.send(["notify_go_online",(True,"message")])
                     notify_new_client(nick, clients) #solo se le deberia pasar a la addressbook de nick y que a su vez lo tengan en la suya
 		    check_inbox(nick,clients,inbox) #desde aqui se le envia el mensaje directamente al listener del cliente nick
                 else:
@@ -69,9 +71,9 @@ def serve_client(conn, clients,users,inbox):
                 users[nick] = password
 		#check_addressbook(agenda)
 		addressbook[nick] = agenda#=check_addressbook(agenda)
-       		conn.send(["notify_new",(True,"message"),addressbook[nick]]) #envia la addressbook actualizada
+       		conn.send(["notify_new_user",(True,"message"),addressbook[nick]]) #envia la addressbook actualizada
 	    else:
-		conn.send(["notify_new", (False, "ya existe el usuario")])
+		conn.send(["notify_new_user", (False, "ya existe el usuario")])
         elif clave == "quit":
 		connected = False
 		conn.send(["notify_quit",True]) #el cliente debe esperar a recibir este True para desconectar
@@ -86,8 +88,15 @@ def serve_client(conn, clients,users,inbox):
 		else:
 		    conn.send(["notify_chat",(False,"el usuario no existe")])
 	elif clave == "add_contact":
-		respuesta = new_contact(nick,users,addressbook) #debe devolver tupla (T/F,message)
+                nuevo = m[2]
+                if nuevo in users:
+                    addressbook[nick].append(nuevo)
+                    respuesta = (True,"message")
+                else:
+                    respuesta = (False, "no existe el usuario")
 		conn.send(["notify_add_contact", respuesta])
+        print "clients", clients
+        print "users", users
     del clients[nick] #ojo, debe existir nick
 		
 
