@@ -1,4 +1,3 @@
-
 #hay que seguir cambiando cosas desde listener-t
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
@@ -32,11 +31,11 @@ def check_inbox(usuario,clients,inbox):
 		conn = Client(address=clients[usuario][0], authkey=clients[usuario][1])
 		conn.send(("server_notify_inbox",registro_info))
 		conn.close()
-def send_message(destino,mensaje,clients):
-    print "hola", destino,mensaje
+def send_message(usuario,destino,mensaje,clients):
+    
     if destino in clients:
            conn = Client(address=clients[destino][0], authkey=clients[destino][1])
-           conn.send(("server_notify_chat", mensaje))
+           conn.send(["server_notify_chat",(usuario,mensaje)])
     else:
            inbox[destino]=mensaje
 	   print "inbox", inbox
@@ -77,14 +76,16 @@ def serve_client(conn, clients,users,inbox,addressbook):
         elif clave == "quit":
 		connected = False
 		conn.send(["notify_quit",True]) #el cliente debe esperar a recibir este True para desconectar
+                del clients[nick]
 		notify_quit_client(nick,clients) #hay que cambiar notify_quit para que ignore a nick
+                
 		#verificar que el del clients[nick] se hace al final y fuera del while
 	elif clave == "chat": #queda por poner las limitaciones referentes a la addressbook
 		destino = m[2][0]
 		mensaje = m[2][1]
 		if destino in users: #da igual que este conectado  o no
 		    conn.send(["notify_chat",(True,"message")])
-		    send_message(destino, mensaje,clients)
+		    send_message(nick,destino, mensaje,clients)
 		else:
 		    conn.send(["notify_chat",(False,"el usuario no existe")])
 	elif clave == "add_contact":
@@ -97,7 +98,8 @@ def serve_client(conn, clients,users,inbox,addressbook):
 		conn.send(["notify_add_contact", respuesta])
         print "clients", clients
         print "users", users
-    del clients[nick] #ojo, debe existir nick
+        print "addressbook", addressbook
+    #del clients[nick] #ojo, debe existir nick
 		
 
 
