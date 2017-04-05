@@ -1,4 +1,3 @@
-#hay que seguir cambiando cosas desde listener-t
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #hasta ahora deja enviar mensajes entre clientes online
@@ -45,42 +44,38 @@ def serve_client(conn, clients,users,inbox,addressbook):
     while connected:
         try:
             m = conn.recv()
-        except EOFError:
-            print 'connection abruptly closed by client'
-            connected = False            
-            
-        nick = m[0][0]
-        password = m[0][1]
-        clave = m[1]
-        if clave == "go_online": 
-            if nick in users:
-                if users[nick] == password:
-                    client_info = m[2]
-                    clients[nick] = client_info
-		    conn.send(["notify_go_online",(True,"message")])
-                    notify_new_client(nick, clients) #solo se le deberia pasar a la addressbook de nick y que a su vez lo tengan en la suya
-		    check_inbox(nick,clients,inbox) #desde aqui se le envia el mensaje directamente al listener del cliente nick
+            nick = m[0][0]
+            password = m[0][1]
+            clave = m[1]
+            if clave == "go_online": 
+                if nick in users:
+                    if users[nick] == password:
+                        client_info = m[2]
+                        clients[nick] = client_info
+		        conn.send(["notify_go_online",(True,"message")])
+                        notify_new_client(nick, clients) #solo se le deberia pasar a la addressbook de nick y que a su vez lo tengan en la suya
+		        check_inbox(nick,clients,inbox) #desde aqui se le envia el mensaje directamente al listener del cliente nick
+                    else:
+                        conn.send(["notify_go_online",(False, "wrong password")])
                 else:
-                    conn.send(["notify_go_online",(False, "wrong password")])
-            else:
-                conn.send(["notify_go_online",(False,"el usuario no existe")])
-        elif clave == "new_user":
-	    agenda = m[2]
-	    if nick not in users:
-                users[nick] = password
-		#check_addressbook(agenda)
-		addressbook[nick] = agenda#=check_addressbook(agenda)
-       		conn.send(["notify_new_user",(True,"message"),addressbook[nick]]) #envia la addressbook actualizada
-	    else:
-		conn.send(["notify_new_user", (False, "ya existe el usuario")])
-        elif clave == "quit":
+                    conn.send(["notify_go_online",(False,"el usuario no existe")])
+            elif clave == "new_user":
+	        agenda = m[2]
+	        if nick not in users:
+                    users[nick] = password
+		    #check_addressbook(agenda)
+		    addressbook[nick] = agenda#=check_addressbook(agenda)
+       		    conn.send(["notify_new_user",(True,"message"),addressbook[nick]]) #envia la addressbook actualizada
+	        else:
+		    conn.send(["notify_new_user", (False, "ya existe el usuario")])
+            elif clave == "quit":
 		connected = False
-		conn.send(["notify_quit",True]) #el cliente debe esperar a recibir este True para desconectar
+		conn.send(["notify_quit",(True, "")]) #el cliente debe esperar a recibir este True para desconectar
                 del clients[nick]
-		notify_quit_client(nick,clients) #hay que cambiar notify_quit para que ignore a nick
+		notify_quit_client(nick,clients) 
                 
 		#verificar que el del clients[nick] se hace al final y fuera del while
-	elif clave == "chat": #queda por poner las limitaciones referentes a la addressbook
+	    elif clave == "chat": #queda por poner las limitaciones referentes a la addressbook
 		destino = m[2][0]
 		mensaje = m[2][1]
 		if destino in users: #da igual que este conectado  o no
@@ -88,7 +83,7 @@ def serve_client(conn, clients,users,inbox,addressbook):
 		    send_message(nick,destino, mensaje,clients)
 		else:
 		    conn.send(["notify_chat",(False,"el usuario no existe")])
-	elif clave == "add_contact":
+	    elif clave == "add_contact":
                 nuevo = m[2]
                 if nuevo in users:
                     addressbook[nick].append(nuevo)
@@ -96,6 +91,12 @@ def serve_client(conn, clients,users,inbox,addressbook):
                 else:
                     respuesta = (False, "no existe el usuario")
 		conn.send(["notify_add_contact", respuesta])
+        except EOFError:
+            print 'connection abruptly closed by client'
+            connected = False            
+            del client[nick]
+            notify_quit_client(nick,clients)
+        
         print "clients", clients
         print "users", users
         print "addressbook", addressbook
