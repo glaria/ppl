@@ -47,7 +47,7 @@ def serve_client(conn, clients,users,inbox):
         except EOFError:
             print 'connection abruptly closed by client'
             connected = False            
-            print m[0][0], 'connection closed'
+            
         nick = m[0][0]
         password = m[0][1]
         clave = m[1]
@@ -56,50 +56,39 @@ def serve_client(conn, clients,users,inbox):
                 if users[nick] == password:
                     client_info = m[2]
                     clients[nick] = client_info
-                    notify_new_client(nick, clients)
-                    conn.send(["notify_go_online",True])
+		    conn.send(["notify_go_online",True])
+                    notify_new_client(nick, clients) #solo se le deberia pasar a la addressbook de nick y que a su vez lo tengan en la suya
+		    check_inbox(nick,clients,inbox) #desde aqui se le envia el mensaje directamente al listener del cliente nick
                 else:
                     conn.send(["notify_go_online",(False, "wrong password")])
             else:
                 conn.send(["notify_go_online",(False,"el usuario no existe")])
-#hasta aqui, mirar en listener-t.py       
-            connected = False
-            del clients[m[0][0]]                       
-            notify_quit_client(m[0][0], clients)            
-            print m[0][0], 'connection closed'
-            conn.close() 
-        elif m[1] == "go_online":
-            print "por alla"
-            if m[0][0] in users:
-	    	if users[m[0][0]] == m[0][1]:	#si (id,pass) ok
-                 	print "hola"
-                	client_info = m[2]
-                	clients[m[0][0]] = client_info
-                	notify_new_client(m[0][0], clients)
-                        conn = Client(address=client_info[0],authkey=client_info[1])
-                        conn.send(check_inbox(m[0][0],inbox))
-		else: #wrong pass
-                	message = ["notify_connect", (False, "contraseña incorrecta")]
-                        conn = Client(address=m[2][0], authkey=m[2][1])
-                        conn.send(message)
-            	client_info = m[2]
-            	clients[m[0][0]] = client_info
-            	notify_new_client(m[0][0], clients)
-	    else: #registro nuevo usuario
-		client_info = m[2]
-                clients[m[0][0]] = client_info
-                users[m[0][0]] = m[0][1] #registro del nuevo user
-		print "users", users
-		print "clients", clients
-		notify_new_client(m[0][0], clients)
-        elif m[1] == "chat":
-	    print "por aqui"
-            sendto = m[2][0]
-            message = m[2][1]
-            if sendto in users:
-            	send_message(sendto,(m[0][0],message),clients)
-            else:
-		print "no existe el usuario", sendto
+        elif clave == "new_user":
+	    agenda = m[2]
+	    if nick not in users:
+                users[nick] = password
+		#check_addressbook(agenda)
+		addressbook[nick] = agenda#=check_addressbook(agenda)
+       		conn.send(["notify_new",(True,"message"),addressbook[nick]]) #envia la addressbook actualizada
+	    else:
+		conn.send(["notify_new", (False, "ya existe el usuario")])
+        elif clave == "quit":
+		connected = False
+		conn.send(["notify_quit",True]) #el cliente debe esperar a recibir este True para desconectar
+		notify_quit_client(nick,clients) #hay que cambiar notify_quit para que ignore a nick
+		#verificar que el del clients[nick] se hace al final y fuera del while
+	elif clave == "chat": #queda por poner las limitaciones referentes a la addressbook
+		destino = m[2][0]
+		mensaje = m[2][1]
+		if destino in users: #da igual que este conectado  o no
+		    conn.send(["notify_chat",(True,"message")])
+		    send_message(destino, mensaje,clients)
+		else:
+		    conn.send(["notify_chat",(False,"el usuario no existe")])
+	#elif clave == "add_contact"
+    del clients[nick] #ojo, debe existir nick
+		
+
 
 if __name__ == '__main__':
     listener = Listener(address=('127.0.0.1', 6000), authkey='secret password server')
@@ -109,13 +98,13 @@ if __name__ == '__main__':
     clients = m.dict()
     users = m.dict() #registro de todos los usuarios existentes
     inbox = m.dict() #mensajes recibidos mientras estaba offline, {id,(from,message)}
-    
+    addressbook = m.dict()
     while True:
         print 'accepting conexions'
         conn = listener.accept()
         print 'connection accepted from', listener.last_accepted
 
-        p = Process(target=serve_client, args=(conn,clients,users,inbox))
+        p = Process(target=serve_client, args=(conn,clients,users,inbox,addressbook))
         p.start()
     listener.close()
 print 'end server'
