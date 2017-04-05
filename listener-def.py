@@ -85,7 +85,9 @@ def serve_client(conn, clients,users,inbox):
 		    send_message(destino, mensaje,clients)
 		else:
 		    conn.send(["notify_chat",(False,"el usuario no existe")])
-	#elif clave == "add_contact"
+	elif clave == "add_contact":
+		respuesta = new_contact(nick,users,addressbook) #debe devolver tupla (T/F,message)
+		conn.send(["notify_add_contact", respuesta])
     del clients[nick] #ojo, debe existir nick
 		
 
@@ -97,8 +99,9 @@ if __name__ == '__main__':
     m = Manager()
     clients = m.dict()
     users = m.dict() #registro de todos los usuarios existentes
-    inbox = m.dict() #mensajes recibidos mientras estaba offline, {id,(from,message)}
+    inbox = m.dict() #mensajes recibidos mientras estaba offline, {id,(from,message)}    
     addressbook = m.dict()
+    #faltarian por poner los semaforos
     while True:
         print 'accepting conexions'
         conn = listener.accept()
