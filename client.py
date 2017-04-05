@@ -53,12 +53,11 @@ if __name__ == '__main__':
         elif typo == "new_user":
             conn.send([(usuario,password), typo, addressbook])
         answer = conn.recv()
-        print answer[0]
         if answer[0] == "notify_new_user":
-            print "hola"
+   
             if answer[1][0] == False:
                 print answer[1][1]
-                print "hi"
+
         elif answer[0] == "notify_go_online":
             if answer[1][0] == True:
                 conectado = False #he hecho login, asi que salgo del bucle inicial
@@ -82,7 +81,8 @@ if __name__ == '__main__':
         c = conn.recv()
         #aqui la gestion de las respuestas que se reciben desde el servidor
         clave = c[0]
-        if clave == "quit":
+        if clave == "notify_quit":
+            
             if c[1][0] == True:
                 connected = False
             else:
@@ -92,7 +92,8 @@ if __name__ == '__main__':
                 print c[1][1]
         elif clave == "notify_add_contact":
             if c[1][0] == True:
-                addressbook = c[2] #comprobar donde se va a meter el addressbook
+                #addressbook = c[1][1] #comprobar donde se va a meter el addressbook
+                print "ok"
             else:
                 print c[1][1]
            
