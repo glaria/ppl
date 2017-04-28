@@ -24,7 +24,7 @@ def notify_quit_client(id,clients,addressbook):
                 conn.close()
 def check_inbox(usuario,clients,inbox):
     print "checking inbox", usuario
-    for registro, registro_info in inbox.items():#comprobar esto
+    for registro, registro_info in inbox.items():
 	    print registro
 	    if registro==usuario:
 	        if inbox[usuario] != []:
@@ -43,7 +43,7 @@ def send_message(usuario,destino,mensaje,clients,inbox):
   
 	print "inbox", inbox
     
-def serve_client(conn, clients,users,inbox,addressbook):
+def serve_client(conn, clients,users,inbox,addressbook,s,t,u):
     connected = True
     while connected:
         try:
@@ -53,7 +53,7 @@ def serve_client(conn, clients,users,inbox,addressbook):
             clave = m[1]
             if clave == "go_online": 
                 s.acquire()
-                if nick in users:
+                if nick in users and nick not in clients:
                     if users[nick] == password:
                         client_info = m[2]
                         clients[nick] = client_info
@@ -65,27 +65,36 @@ def serve_client(conn, clients,users,inbox,addressbook):
                     else:
                         conn.send(["notify_go_online",(False, "wrong password")])
                 else:
-                    conn.send(["notify_go_online",(False,"el usuario no existe")])
+                    conn.send(["notify_go_online",(False,"el usuario no existe o ya esta conectado")])
                 s.release()
             elif clave == "new_user":
-	            agenda = m[2]
-	            if nick not in users:
-                        users[nick] = password
-		        #check_addressbook(agenda)
-		        addressbook[nick] = agenda#=check_addressbook(agenda)
-		        inbox[nick] = []
+                s.acquire()
+                t.acquire()
+                u.acquire()
+                agenda = m[2]
+	        if nick not in users:
+                    users[nick] = password
+	            #check_addressbook(agenda)
+	            addressbook[nick] = agenda#=check_addressbook(agenda)
+		    inbox[nick] = []
                     
-       		        conn.send(["notify_new",(True,"message"),addressbook[nick]]) #envia la addressbook actualizada
-	            else:
-		        conn.send(["notify_new", (False, "ya existe el usuario")])
+       		    conn.send(["notify_new",(True,"message"),addressbook[nick]]) #envia la addressbook actualizada
+	        else:
+		    conn.send(["notify_new", (False, "ya existe el usuario")])
+                s.release()
+                u.release()
+                t.release()
             elif clave == "quit":
-		        connected = False
-		        conn.send(["notify_quit",(True, "")]) #el cliente debe esperar a recibir este True para desconectar
-                        del clients[nick]
-		        notify_quit_client(nick,clients,addressbook) 
+                connected = False
+		conn.send(["notify_quit",(True, "")]) #el cliente debe esperar a recibir este True para desconectar
+                del clients[nick]
+		notify_quit_client(nick,clients,addressbook) 
                 
-		        #verificar que el del clients[nick] se hace al final y fuera del while
-	    elif clave == "chat": #queda por poner las limitaciones referentes a la addressbook
+	        #verificar que el del clients[nick] se hace al final y fuera del while
+	    elif clave == "chat": 
+                s.acquire()
+                t.acquire()
+                u.acquire()
 		destino = m[2][0]
 	        mensaje = m[2][1]
                 if destino in addressbook[nick]: #si lo tienes agregado
@@ -94,7 +103,13 @@ def serve_client(conn, clients,users,inbox,addressbook):
 		        send_message(nick,destino, mensaje,clients,inbox)
 		else:
 		    conn.send(["notify_chat",(False,"el usuario no esta en tu addressbook")])
+                s.release()
+                u.release()
+                t.release()
 	    elif clave == "add_contact":
+                s.acquire()
+                t.acquire()
+                u.acquire()              
                 nuevo = m[2]
                 if nuevo in users:
                     if nuevo in addressbook[nick]:
@@ -105,6 +120,9 @@ def serve_client(conn, clients,users,inbox,addressbook):
                         respuesta = (True,"message")
                 else:
                     respuesta = (False, "no existe el usuario")
+                s.release()
+                u.release()
+                t.release()
 		conn.send(["notify_add_contact", respuesta])
 
         except EOFError:
@@ -128,16 +146,16 @@ if __name__ == '__main__':
     inbox = m.dict() #mensajes recibidos mientras estaba offline, {id,(from,message)}    
     addressbook = m.dict()
     #faltaria poner los semaforos
-    s= Lock() #s-> users, t->clients, u->inbox, v->addressbook
+    s= Lock() #s-> users, , u->inbox, t->addressbook
     u = Lock()
     t = Lock()
-    v = Lock()
+  
     while True:
         print 'accepting conexions'
         conn = listener.accept()
         print 'connection accepted from', listener.last_accepted
 
-        p = Process(target=serve_client, args=(conn,clients,users,inbox,addressbook))
+        p = Process(target=serve_client, args=(conn,clients,users,inbox,addressbook,s,t,u))
         p.start()
     listener.close()
 print 'end server'
