@@ -49,8 +49,8 @@ if __name__ == '__main__':
     canvas.grid(row=0, column=0, columnspan=90)
     
     obj =[]
-    obj.append(canvas.create_text(210,70,text="Mensajes desde otros clientes"))
-    obj.append(canvas.create_text(150,105,text="Respuestas del servidor"))
+    obj.append(canvas.create_text(250,70,text="Mensajes desde otros clientes"))
+    obj.append(canvas.create_text(250,105,text="Respuestas del servidor"))
     
     
     user_l = Label(frame,text="Usuario")
@@ -73,50 +73,62 @@ if __name__ == '__main__':
     
     cl = Process(target=client_listener, args=())
     cl.start()
-    conectado = True
-    connected = False
-    def connect_r():
-        typo = "new_user"
-        usuario = user_e.get()
-        password = pass_e.get()
-        addressbook = []
-        conn.send([(usuario,password), typo, addressbook])
-        mens = conn.recv()
-        queue.put(["2",mens])
+    conectado = True #con el servidor
+ 
+    connected = False #logueado
+    def connect_r(): #registro
+        global connected
+        if not connected:
+            typo = "new_user"
+            usuario = user_e.get()
+            password = pass_e.get()
+            addressbook = []
+            conn.send([(usuario,password), typo, addressbook])
+            mens = conn.recv()
+            queue.put(["2",mens])
     register=Button(frame, text="Register", command=connect_r, width=7)
     register.grid(row=1, column=3)
     
     def login():
-        typo = "go_online"
-        global usuario
-        usuario = user_e.get()
-        global password
-        password = pass_e.get()
-        conn.send([(usuario,password), typo, local_listener])
-        mens = conn.recv()
-        queue.put(["2",mens])
+        global connected
+        if not connected:
+            typo = "go_online"
+            global usuario
+            usuario = user_e.get()
+            global password
+            password = pass_e.get()
+            conn.send([(usuario,password), typo, local_listener])
+            mens = conn.recv()
+            connected = mens[1][0]
+            queue.put(["2",mens])
     login_b =Button(frame, text="Login", command=login, width=7)
     login_b.grid(row=2, column=3)
     
     def send_m():
-        sendto = user_e.get()
-        message = mens_e.get()
-        conn.send([(usuario,password), "chat", (sendto,message)])
-        mens = conn.recv()
-        queue.put(["2",mens])
+        global connected
+        if connected:
+            sendto = user_e.get()
+            message = mens_e.get()
+            conn.send([(usuario,password), "chat", (sendto,message)])
+            mens = conn.recv()
+            queue.put(["2",mens])
     send_b = Button(frame, text="Send", command=send_m, width=7)
     send_b.grid(row=3, column =3)
     
     def add_n():
-        nuevo = user_e.get()
-        conn.send([(usuario,password), "add_contact", nuevo])
-        mens = conn.recv()
-        queue.put(["2",mens])
+        global connected
+        if connected:
+            nuevo = user_e.get()
+            conn.send([(usuario,password), "add_contact", nuevo])
+            mens = conn.recv()
+            queue.put(["2",mens])
     add_b = Button(frame, text="Add", command=add_n, width=7)
     add_b.grid(row=1, column =4)
     
     def quit_c():
-        conn.send(([(usuario,password), "quit", []]))
+        global connected
+        if connected:
+            conn.send(([(usuario,password), "quit", []]))
         queue.put("bye")
     quit_b = Button(frame, text="Quit", command=quit_c, width=7)
     quit_b.grid(row=2, column =4)
@@ -142,4 +154,4 @@ if __name__ == '__main__':
     print "last message"
     conn.close()
     cl.terminate()
-    print "end client"
+print "end client"
