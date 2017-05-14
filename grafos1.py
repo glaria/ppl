@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+
+   # -*- coding: utf-8 -*-
 from mrjob.job import MRJob
 from mrjob.step import MRStep
 import collections
@@ -7,8 +8,7 @@ class Grafos(MRJob):
     def mapper(self, _, line):
         if len(line) > 0:
             line = line.replace('"', '')
-            w = line.split()
-            print w
+            w = line.split(",")
             if w[0] != w[1]:
                 yield w[1], w[0]
                 yield w[0], w[1]
@@ -20,20 +20,18 @@ class Grafos(MRJob):
                 t.append(nodo)
         for nodo in t:
             if clave < nodo:
-                print (clave,nodo),(len(set(t)),None)
+              
                 yield (clave,nodo),(len(set(t)),None)
             else:
-                print (nodo,clave),(None,len(set(t)))
+
                 yield (nodo,clave),(None,len(set(t)))
     def filtering(self,clave,dato):
-        l = [0,0]
         dato1 = dato.next()
         dato2 = dato.next()
-        if dato1 == None:
-            l[0] = dato2
+        if dato1[0] == None:
+            yield clave, [dato2[0],dato1[1]]
         else:
-            l[1] = dato1
-        yield clave, l
+            yield clave, [dato1[0],dato2[1]]
 
     def steps(self):
         return [
@@ -43,6 +41,6 @@ class Grafos(MRJob):
         ]
 
 if __name__ == '__main__':
-
-    Grafos.run()
-                        
+    import sys
+    sys.stderr = open('localerrorlog.txt','w')
+    Grafos.run()                     
