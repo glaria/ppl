@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from mrjob.job import MRJob
 from mrjob.step import MRStep
-from mrjob.util import unique
-import collections
 
 class Grafos_3_ciclos(MRJob):
     def mapper(self, _, line):
@@ -18,13 +16,11 @@ class Grafos_3_ciclos(MRJob):
         for nodo in lista:
             if nodo not in t:
                 t.append(nodo)
-        for nodo in t:
-            if clave < nodo:
-              
-                yield (clave,nodo),list(set(t))
-            else:
+                if clave < nodo:
+                    yield (clave,nodo),list(set(t))
+                else:
+                    yield (nodo,clave),list(set(t))
 
-                yield (nodo,clave),list(set(t))
     def filtering(self,clave,dato):
         dato1 = dato.next()
         dato2 = dato.next()
@@ -34,11 +30,11 @@ class Grafos_3_ciclos(MRJob):
                 yield (aux[0],aux[1]),aux[2]
 
     def cleaning(self, arista, lista): #quito repetidos
-        s=[]
+        s = []
         for elemento in lista:
-            s.append(elemento)
-        for nodo in set(s):
-            yield (arista[0],arista[1],nodo), None
+            if elemento not in s:
+                s.append(elemento)
+                yield (arista[0],arista[1],elemento), None
       
     def steps(self):
         return [
