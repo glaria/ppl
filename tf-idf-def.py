@@ -6,32 +6,42 @@ import string
 
 class tf_idf(MRJob):
     
-    def mapper(self,_,line):
+    def mapper1(self,_,line):
         for x in string.punctuation:
             line = line.replace(x,' ')
         for word in line.split():
             yield (word.lower(), jobconf_from_env('map.input.file')), 1
 
-    def reducer(self,key,counter):
+    def reducer1(self,key,counter):
         k = sum(counter)
-        yield ("doc",key[1]), k #numero de apariciones de key[0] en key[1] la suma de esto me dara el total
-        yield key, k
+        yield key[1],(key[0],k) #devuelvo como key el nombre del doc
 
+    def reducer11(self,key,lista):
+        count = 0
+        words = []
+        k = []
+        for j in lista:
+            count += j[1]
+            words.append(j[0])
+            k.append(j[1])
+       
+        for i in range(len(k)):
+            yield words[i], (key,k[i],count) #devuelve (word,doc)->(count(w in doc), total(doc))
 
-    def filtering(self, key, total):
-        if key[0] == "doc":
-            yield (10,key[1]), sum(total) #total de palabras en el doc key[1]
-        else:
-            yield key, sum(total)
-
-    def cleaning(self,key,total):    
+    def mapper2(self,key,lista): #quiero sacar el numero de doc
+        yield key, (lista[0],lista[1],lista[2],1)
+  
+    def reducer2(self,key,lista):
+        documents = []
         
 
     def steps(self):
         return [
-            MRStep(mapper = self.mapper,
-                    reducer = self.reducer),
-            MRStep(reducer = self.filtering) 
+            MRStep(mapper = self.mapper1,
+                    reducer = self.reducer1),
+            MRStep(reducer = self.reducer11),
+            #MRStep(mapper = self.mapper2,
+                    #reducer = self.reducer2), 
         ]
 
             
