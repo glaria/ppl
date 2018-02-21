@@ -1,0 +1,30 @@
+import numpy as np
+
+class Vector(object):
+	
+	def __init__(self,x,y):
+		self.x = x
+		self.y = y
+
+	def __repr__(self):
+		return '({},{})'.format(self.x,self.y)
+
+	def __eq__(self,other):
+		return
+
+	def __add__(self,other):
+		return Vector(self.x + other.x, self.y + other.y)
+
+
+	def norm(self):
+		return np.sqrt(self.x**2 + self.y**2)
+
+
+	def dot(self,other):
+		return self.x*other.x + self.y*other.y
+
+
+y = Vector(2,3)
+w = Vector(2,3)
+
+print y + w
